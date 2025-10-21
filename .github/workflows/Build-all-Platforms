@@ -1,0 +1,62 @@
+name: Build OneTagger (All Platforms)
+on:
+  workflow_dispatch:
+  push:
+
+jobs:
+  build:
+    name: Build for ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9
+
+      - name: Build UI
+        run: |
+          cd client
+          pnpm install
+          pnpm run build
+          cd ..
+
+      - name: Set up Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+
+      - name: Build release binary
+        run: cargo build --release
+
+      - name: Package artifact
+        shell: bash
+        run: |
+          mkdir -p artifacts
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            cp target/release/onetagger.exe artifacts/
+            powershell Compress-Archive -Path artifacts/onetagger.exe -DestinationPath onetagger-windows.zip
+          elif [ "$RUNNER_OS" = "macOS" ]; then
+            cp target/release/onetagger artifacts/onetagger-macos
+            zip -j onetagger-macos.zip artifacts/onetagger-macos
+          else
+            cp target/release/onetagger artifacts/onetagger-linux
+            zip -j onetagger-linux.zip artifacts/onetagger-linux
+          fi
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ runner.os }}-onetagger
+          path: |
+            *.zip
