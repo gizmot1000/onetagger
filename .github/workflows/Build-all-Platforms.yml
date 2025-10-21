@@ -44,6 +44,11 @@ jobs:
           brew install glib gtk+3 gdk-pixbuf cairo pango at-spi2-core libsoup pkg-config || true
           brew list glib gtk+3 gdk-pixbuf cairo pango at-spi2-core libsoup pkg-config
 
+      # 🪟 Windows setup (ensure zip and pnpm tools work)
+      - name: Install zip utility (Windows)
+        if: runner.os == 'Windows'
+        run: choco install zip -y
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
@@ -54,7 +59,7 @@ jobs:
         with:
           version: 9
 
-      # Build frontend (Vue + Vite + Quasar)
+      # 🧱 Build frontend (Vue + Vite + Quasar)
       - name: Build UI
         shell: pwsh
         run: |
@@ -69,18 +74,18 @@ jobs:
         with:
           toolchain: stable
 
-      # Build backend (Rust)
+      # ⚙️ Build backend (Rust)
       - name: Build release binary
         run: cargo build --release
 
-      # Package platform-specific binary
+      # 📦 Package platform-specific binary
       - name: Package artifact
         shell: bash
         run: |
           mkdir -p artifacts
           if [ "$RUNNER_OS" = "Windows" ]; then
             cp target/release/onetagger.exe artifacts/
-            zip -j onetagger-windows.zip artifacts/onetagger.exe
+            pwsh -Command "Compress-Archive -Path artifacts/onetagger.exe -DestinationPath onetagger-windows.zip"
           elif [ "$RUNNER_OS" = "macOS" ]; then
             cp target/release/onetagger artifacts/onetagger-macos
             zip -j onetagger-macos.zip artifacts/onetagger-macos
@@ -107,7 +112,7 @@ jobs:
         with:
           path: ./artifacts
 
-      # 📝 Auto-generate changelog
+      # 📝 Auto-generate changelog text
       - name: Generate changelog
         id: changelog
         run: |
@@ -123,7 +128,7 @@ jobs:
           cat changelog.md >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
-      # 🚀 Create GitHub Release and attach builds
+      # 🚀 Create GitHub Release and attach binaries
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
