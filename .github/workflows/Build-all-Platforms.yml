@@ -14,7 +14,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install system dependencies
+      # 🐧 Linux dependencies
+      - name: Install system dependencies (Linux)
         if: runner.os == 'Linux'
         run: |
           sudo apt update
@@ -24,9 +25,11 @@ jobs:
             libpango1.0-dev \
             libatk1.0-dev \
             libcairo2-dev \
+            libasound2-dev \
             pkg-config \
             build-essential
 
+      # 🍎 macOS dependencies
       - name: Install system dependencies (macOS)
         if: runner.os == 'macOS'
         run: |
