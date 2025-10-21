@@ -35,14 +35,14 @@ jobs:
             build-essential \
             curl
 
-      # 🍎 macOS dependencies
+      # 🍎 macOS dependencies (fixed names)
       - name: Install system dependencies (macOS)
         if: runner.os == 'macOS'
         run: |
           set -e
           brew update || true
-          brew install glib gtk+3 gdk-pixbuf cairo pango atk libsoup webkitgtk pkg-config || true
-          brew list glib gtk+3 gdk-pixbuf cairo pango atk libsoup webkitgtk pkg-config
+          brew install glib gtk+3 gdk-pixbuf cairo pango at-spi2-core libsoup pkg-config || true
+          brew list glib gtk+3 gdk-pixbuf cairo pango at-spi2-core libsoup pkg-config
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -107,7 +107,7 @@ jobs:
         with:
           path: ./artifacts
 
-      # 📝 Optional: Auto-generate changelog text
+      # 📝 Auto-generate changelog
       - name: Generate changelog
         id: changelog
         run: |
