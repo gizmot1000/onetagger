@@ -2,13 +2,14 @@ name: Build and Release OneTagger
 on:
   push:
     tags:
-      - "v*.*.*"  # e.g., v1.0.0
+      - "v*.*.*"   # Example: v1.0.0
   workflow_dispatch:
 
 jobs:
   build:
     name: Build for ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
@@ -38,8 +39,10 @@ jobs:
       - name: Install system dependencies (macOS)
         if: runner.os == 'macOS'
         run: |
-          brew update
-          brew install glib gtk+3 gdk-pixbuf cairo pango atk libsoup webkitgtk pkg-config
+          set -e
+          brew update || true
+          brew install glib gtk+3 gdk-pixbuf cairo pango atk libsoup webkitgtk pkg-config || true
+          brew list glib gtk+3 gdk-pixbuf cairo pango atk libsoup webkitgtk pkg-config
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -51,6 +54,7 @@ jobs:
         with:
           version: 9
 
+      # Build frontend (Vue + Vite + Quasar)
       - name: Build UI
         shell: pwsh
         run: |
@@ -65,9 +69,11 @@ jobs:
         with:
           toolchain: stable
 
+      # Build backend (Rust)
       - name: Build release binary
         run: cargo build --release
 
+      # Package platform-specific binary
       - name: Package artifact
         shell: bash
         run: |
@@ -101,9 +107,27 @@ jobs:
         with:
           path: ./artifacts
 
+      # 📝 Optional: Auto-generate changelog text
+      - name: Generate changelog
+        id: changelog
+        run: |
+          echo "## Changes since last release" > changelog.md
+          git fetch --tags
+          LATEST_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          if [ -n "$LATEST_TAG" ]; then
+            git log ${LATEST_TAG}..HEAD --pretty=format:"- %s (%an)" >> changelog.md
+          else
+            git log --pretty=format:"- %s (%an)" >> changelog.md
+          fi
+          echo "changelog<<EOF" >> $GITHUB_OUTPUT
+          cat changelog.md >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      # 🚀 Create GitHub Release and attach builds
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          body: ${{ steps.changelog.outputs.changelog }}
           files: |
             artifacts/**/*.zip
         env:
