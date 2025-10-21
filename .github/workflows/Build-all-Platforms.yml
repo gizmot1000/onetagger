@@ -27,6 +27,7 @@ jobs:
             libcairo2-dev \
             libasound2-dev \
             libsoup-3.0-dev \
+            libwebkit2gtk-4.1-dev \
             pkg-config \
             build-essential \
             curl
@@ -36,7 +37,7 @@ jobs:
         if: runner.os == 'macOS'
         run: |
           brew update
-          brew install glib gtk+3 gdk-pixbuf cairo pango atk libsoup pkg-config
+          brew install glib gtk+3 gdk-pixbuf cairo pango atk libsoup webkit2gtk pkg-config
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
