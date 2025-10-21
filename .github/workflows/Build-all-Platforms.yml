@@ -26,15 +26,17 @@ jobs:
             libatk1.0-dev \
             libcairo2-dev \
             libasound2-dev \
+            libsoup-3.0-dev \
             pkg-config \
-            build-essential
+            build-essential \
+            curl
 
       # 🍎 macOS dependencies
       - name: Install system dependencies (macOS)
         if: runner.os == 'macOS'
         run: |
           brew update
-          brew install glib gtk+3 gdk-pixbuf cairo pango atk pkg-config
+          brew install glib gtk+3 gdk-pixbuf cairo pango atk libsoup pkg-config
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
