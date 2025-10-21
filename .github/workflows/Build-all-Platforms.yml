@@ -37,7 +37,7 @@ jobs:
         if: runner.os == 'macOS'
         run: |
           brew update
-          brew install glib gtk+3 gdk-pixbuf cairo pango atk libsoup webkit2gtk pkg-config
+          brew install glib gtk+3 gdk-pixbuf cairo pango atk libsoup webkitgtk pkg-config
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
