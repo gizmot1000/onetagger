@@ -1,9 +1,8 @@
-name: Build and Release OneTagger
+name: Build OneTagger (All Platforms)
 on:
+  workflow_dispatch:        # Manually trigger from Actions tab
   push:
-    tags:
-      - "v*.*.*"   # Example: v1.0.0
-  workflow_dispatch:
+    branches: [ main, master ]   # Optional: auto-build on pushes to main/master
 
 jobs:
   build:
@@ -44,7 +43,7 @@ jobs:
           brew install glib gtk+3 gdk-pixbuf cairo pango at-spi2-core libsoup pkg-config || true
           brew list glib gtk+3 gdk-pixbuf cairo pango at-spi2-core libsoup pkg-config
 
-      # 🪟 Windows setup (ensure zip and pnpm tools work)
+      # 🪟 Windows setup (ensure zip works)
       - name: Install zip utility (Windows)
         if: runner.os == 'Windows'
         run: choco install zip -y
@@ -94,46 +93,9 @@ jobs:
             zip -j onetagger-linux.zip artifacts/onetagger-linux
           fi
 
-      - name: Upload artifacts for release
+      # ⬆️ Upload build outputs (available in the Actions tab)
+      - name: Upload compiled binaries
         uses: actions/upload-artifact@v4
         with:
           name: ${{ runner.os }}-onetagger
           path: "*.zip"
-
-  release:
-    name: Create GitHub Release
-    runs-on: ubuntu-latest
-    needs: build
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Download all build artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: ./artifacts
-
-      # 📝 Auto-generate changelog text
-      - name: Generate changelog
-        id: changelog
-        run: |
-          echo "## Changes since last release" > changelog.md
-          git fetch --tags
-          LATEST_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
-          if [ -n "$LATEST_TAG" ]; then
-            git log ${LATEST_TAG}..HEAD --pretty=format:"- %s (%an)" >> changelog.md
-          else
-            git log --pretty=format:"- %s (%an)" >> changelog.md
-          fi
-          echo "changelog<<EOF" >> $GITHUB_OUTPUT
-          cat changelog.md >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-
-      # 🚀 Create GitHub Release and attach binaries
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          body: ${{ steps.changelog.outputs.changelog }}
-          files: |
-            artifacts/**/*.zip
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
