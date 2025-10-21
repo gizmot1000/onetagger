@@ -1,7 +1,9 @@
-name: Build OneTagger (All Platforms)
+name: Build and Release OneTagger
 on:
-  workflow_dispatch:
   push:
+    tags:
+      - "v*.*.*"  # e.g., v1.0.0
+  workflow_dispatch:
 
 jobs:
   build:
@@ -50,9 +52,11 @@ jobs:
           version: 9
 
       - name: Build UI
+        shell: pwsh
         run: |
           cd client
           pnpm install
+          $env:CI = "true"
           pnpm run build
           cd ..
 
@@ -70,7 +74,7 @@ jobs:
           mkdir -p artifacts
           if [ "$RUNNER_OS" = "Windows" ]; then
             cp target/release/onetagger.exe artifacts/
-            powershell Compress-Archive -Path artifacts/onetagger.exe -DestinationPath onetagger-windows.zip
+            zip -j onetagger-windows.zip artifacts/onetagger.exe
           elif [ "$RUNNER_OS" = "macOS" ]; then
             cp target/release/onetagger artifacts/onetagger-macos
             zip -j onetagger-macos.zip artifacts/onetagger-macos
@@ -79,9 +83,28 @@ jobs:
             zip -j onetagger-linux.zip artifacts/onetagger-linux
           fi
 
-      - name: Upload artifact
+      - name: Upload artifacts for release
         uses: actions/upload-artifact@v4
         with:
           name: ${{ runner.os }}-onetagger
-          path: |
-            *.zip
+          path: "*.zip"
+
+  release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ./artifacts
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            artifacts/**/*.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
