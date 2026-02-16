@@ -1,0 +1,101 @@
+name: Build OneTagger (All Platforms)
+on:
+  workflow_dispatch:        # Manually trigger from Actions tab
+  push:
+    branches: [ main, master ]   # Optional: auto-build on pushes to main/master
+
+jobs:
+  build:
+    name: Build for ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # 🐧 Linux dependencies
+      - name: Install system dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt update
+          sudo apt install -y \
+            libgtk-3-dev \
+            libglib2.0-dev \
+            libpango1.0-dev \
+            libatk1.0-dev \
+            libcairo2-dev \
+            libasound2-dev \
+            libsoup-3.0-dev \
+            libwebkit2gtk-4.1-dev \
+            pkg-config \
+            build-essential \
+            curl
+
+      # 🍎 macOS dependencies (fixed names)
+      - name: Install system dependencies (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          set -e
+          brew update || true
+          brew install glib gtk+3 gdk-pixbuf cairo pango at-spi2-core libsoup pkg-config || true
+          brew list glib gtk+3 gdk-pixbuf cairo pango at-spi2-core libsoup pkg-config
+
+      # 🪟 Windows setup (ensure zip works)
+      - name: Install zip utility (Windows)
+        if: runner.os == 'Windows'
+        run: choco install zip -y
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9
+
+      # 🧱 Build frontend (Vue + Vite + Quasar)
+      - name: Build UI
+        shell: pwsh
+        run: |
+          cd client
+          pnpm install
+          $env:CI = "true"
+          pnpm run build
+          cd ..
+
+      - name: Set up Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+
+      # ⚙️ Build backend (Rust)
+      - name: Build release binary
+        run: cargo build --release
+
+      # 📦 Package platform-specific binary
+      - name: Package artifact
+        shell: bash
+        run: |
+          mkdir -p artifacts
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            cp target/release/onetagger.exe artifacts/
+            pwsh -Command "Compress-Archive -Path artifacts/onetagger.exe -DestinationPath onetagger-windows.zip"
+          elif [ "$RUNNER_OS" = "macOS" ]; then
+            cp target/release/onetagger artifacts/onetagger-macos
+            zip -j onetagger-macos.zip artifacts/onetagger-macos
+          else
+            cp target/release/onetagger artifacts/onetagger-linux
+            zip -j onetagger-linux.zip artifacts/onetagger-linux
+          fi
+
+      # ⬆️ Upload build outputs (available in the Actions tab)
+      - name: Upload compiled binaries
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ runner.os }}-onetagger
+          path: "*.zip"
